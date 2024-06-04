@@ -5,7 +5,7 @@ import { PrimitiveDataType } from "./PrimitiveDataType.js";
 export class Segment extends ComplexType {
 
     constructor(values, configs, isSubComponent = false) {
-        super(values, configs, false);
+        super(values, configs, isSubComponent);
         this.setVersion(configs?.version ?? process.env.HL7v2Version ?? '2.5.1');
         this.setDelimiter(configs?.delimiter ?? process.env.fieldDelimiter ?? '|');
         this.setRepeatationDelimiter(configs?.repeatationDelimiter ?? process.env.repeatationDelimiter ?? '~');
@@ -53,27 +53,12 @@ export class Segment extends ComplexType {
         }
     }
 
-    // setComponentValue(component, value) {
-    //     const componentConfig = this.getComponentConfig(component);
-    //     const dataType = this.getDataTypeInstance(component, this.version);
-
-    //     if (componentConfig.isArray) {
-    //         const preparedValues = this.prepareArrayValues(value, dataType);
-    //         if (componentConfig.position) {
-    //             this.values[componentConfig.position] = preparedValues;
-    //         }
-    //     } else {
-    //         super.setComponentValue(component, value);
-    //     }
-    // }
-
     setComponentValue(component, value) {
         const componentConfig = this.getComponentConfig(component);
         const dataType = this.getDataTypeInstance(component, this.version);
 
         if (componentConfig.isArray) {
             let preparedValues = [];
-            console.log('component', component, componentConfig.isArray);
             if (Array.isArray(value)) {
                 value.forEach(valueItem => {
                     if (value instanceof dataType) {
@@ -93,7 +78,6 @@ export class Segment extends ComplexType {
                         }) : null);
                 } else {
                     let valueRepeatation = value.split(this.repeatationDelimiter);
-                    console.log(valueRepeatation);
                     valueRepeatation.forEach(valueItem => {
                         preparedValues.push(dataType ? new dataType(valueItem, {
                             version: this.version, delimiter:
@@ -101,7 +85,6 @@ export class Segment extends ComplexType {
                         }) : null);
                     });
                 }
-                console.log((component, value));
             }
             if(componentConfig.position){
                 this.values[componentConfig.position] = preparedValues;
