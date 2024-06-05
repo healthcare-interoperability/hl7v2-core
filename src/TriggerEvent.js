@@ -281,13 +281,16 @@ export class TriggerEvent {
             let segmentData = items[itemKey];
             if (segmentData?.isGroup) {
                 container[segmentData.group] = container[segmentData.group] || {};
-                this.processMessageList(container[segmentData.group], segmentData.messageList)
+                this.processMessageList(container[segmentData.group], segmentData.messageList);
+                if (segmentData.subgroup) {
+                    this.processItem(container[segmentData.group], segmentData.subgroup);
+                }
             } else {
                 container[segmentData.segment] = container[segmentData.segment] || [];
                 if (segmentData.segment === 'MSH') {
                     container['MSH'] = this.MSHSegment;
                 } else {
-                    this.processMessageList(container[segmentData.segment], segmentData.messageList)
+                    this.processMessageList(container[segmentData.segment], segmentData.messageList);
                 }
             }
         });
