@@ -264,41 +264,103 @@ export class TriggerEvent {
         }
     }
 
-    processMessageList(container, messageList) {
+    processMessageList(mode, container, messageList, invalidSegmentContainer, jsonFlag) {
         if (Array.isArray(messageList)) {
             messageList.forEach((item) => {
                 if (item instanceof Segment) {
-                    container.push(item)
+                    container.push((jsonFlag ? item.toJSON() : item))
                 } else if (typeof item === 'object') {
-                    this.processItem(container, item);
+                    let innerCont = {};
+                    this.processItem(mode, innerCont, item, invalidSegmentContainer, jsonFlag);
+                    container.push(innerCont);
                 }
-            })
+            });
+        } else {
+            invalidSegmentContainer.messageListError = "MessageList not an array";
         }
     }
 
-    processItem(container, items) {
-        Object.keys(items).forEach(itemKey => {
-            let segmentData = items[itemKey];
-            if (segmentData?.isGroup) {
-                container[segmentData.group] = container[segmentData.group] || {};
-                this.processMessageList(container[segmentData.group], segmentData.messageList);
-                if (segmentData.subgroup) {
-                    this.processItem(container[segmentData.group], segmentData.subgroup);
-                }
-            } else {
-                container[segmentData.segment] = container[segmentData.segment] || [];
-                if (segmentData.segment === 'MSH') {
-                    container['MSH'] = this.MSHSegment;
-                } else {
-                    this.processMessageList(container[segmentData.segment], segmentData.messageList);
-                }
-            }
-        });
+    processValidity(messageCount, minOccurs, maxOccurs, error) {
+        let validity = true;
+        if (messageCount < parseInt(minOccurs)) {
+            validity = false;
+            error.minOccursError = {
+                message: "Minimum cardinality not met",
+                minOccurs: minOccurs,
+                messageCount: messageCount
+            };
+        }
+        if (messageCount > parseInt(maxOccurs)) {
+            validity = false;
+            error.maxOccursError = {
+                message: "Maximum cardinality exceeded",
+                maxOccurs: maxOccurs,
+                messageCount: messageCount
+            };
+        }
+        return validity;
     }
 
-    toJSON() {
+    processSegment(mode, container, key, segmentData, invalidSegmentContainer, jsonFlag) {
+        let error = {};
+        let messageErrorList = {};
+        let segmentValid = this.processValidity(segmentData.messageList.length, segmentData?.restrictions?.minOccurs, segmentData?.restrictions?.maxOccurs, error);
+        if (segmentValid || mode === 1) {
+            if (!container[key]) {
+                container[key] = [];
+            }
+            this.processMessageList(mode, container[key], segmentData.messageList, messageErrorList, jsonFlag);
+            if (parseInt(segmentData?.restrictions?.maxOccurs) === 1 && container[key].length === 1) {
+                container[key] = container[key][0];
+            }
+        } else {
+            error.messageList = [];
+            this.processMessageList(mode, error.messageList, segmentData.messageList, messageErrorList, jsonFlag);
+        }
+        if (Object.keys(error).length || Object.keys(messageErrorList).length) {
+            invalidSegmentContainer[key] = {
+                error: error,
+                messageErrorList: messageErrorList
+            };
+        }
+        this.valid = segmentValid && this.valid;
+    }
+
+    processItem(mode, container, items, invalidSegmentData, jsonFlag) {
+        for (let itemKey in items) {
+            let segmentData = items[itemKey];
+            if (segmentData.segment === 'MSH') {
+                container['MSH'] = jsonFlag ? this.MSHSegment.toJSON() : this.MSHSegment;
+            } else if (!segmentData.isGroup) {
+                this.processSegment(mode, container, segmentData.segment, segmentData, invalidSegmentData, jsonFlag);
+            } else {
+                this.processSegment(mode, container, segmentData.group, segmentData, invalidSegmentData, jsonFlag);
+                if (Object.keys(segmentData.subgroup)) {
+                    if (!container[segmentData.group]) {
+                        container[segmentData.group] = {};
+                    }
+                    let groupError = {};
+                    this.processItem(mode, container[segmentData.group], segmentData.subgroup, groupError, jsonFlag);
+                    if (Object.keys(groupError).length) {
+                        invalidSegmentData[segmentData.group] = { ...(invalidSegmentData[segmentData.group] ?? {}), ...groupError };
+                    }
+                }
+            }
+        }
+    }
+
+    toJSON(mode = 0, flag = true) {
+        /**
+         * mode - 0 - validated - only outputs valid sections
+         *      - 1 - all - outputs all sections as found in message
+         *
+         * flag - true - return json
+         *      - false - return class instance of segments
+         */
         let data = {};
-        this.processItem(data, this.segments);
+        this.valid = true;
+        let invalidSegmentData = {};
+        this.processItem(mode, data, this.segments, invalidSegmentData, flag);
         return data;
     }
 }

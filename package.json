@@ -10,9 +10,9 @@
   "author": "",
   "license": "AGPL-3.0-only",
   "devDependencies": {
-    "@babel/cli": "^7.21.0",
-    "@babel/core": "^7.21.4",
-    "@babel/node": "^7.18.10",
-    "@babel/preset-env": "^7.21.4"
+    "@babel/cli": "^7.24.7",
+    "@babel/core": "^7.24.7",
+    "@babel/node": "^7.24.7",
+    "@babel/preset-env": "^7.24.7"
   }
 }
