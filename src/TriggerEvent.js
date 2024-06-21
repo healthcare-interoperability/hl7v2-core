@@ -248,7 +248,7 @@ export class TriggerEvent {
         if (this.constructor.Structure?.versions?.[version]?.groups) {
             let groups = this.constructor.Structure?.versions?.[version]?.groups;
             if (groups?.ref) {
-                return this.getSequenceByVersion(groups?.ref);
+                return this.getGroupByVersion(groups?.ref);
             } else {
                 return groups;
             }
