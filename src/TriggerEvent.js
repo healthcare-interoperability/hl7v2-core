@@ -33,6 +33,7 @@ export class TriggerEvent {
             }
 
             this.zSegments = [];
+            this.customSegmentMap = {};
 
             // // Check if the first segment is the MSH segment
             if (this.rawSegments[0]?.startsWith('MSH')) {
@@ -76,6 +77,11 @@ export class TriggerEvent {
                 }
             }
         }
+    }
+
+    setCustomSegments(segmentId, segmentInstance){
+        this.customSegmentMap[segmentId] = segmentInstance;
+        return this;
     }
 
     getGroupInfo = (groupPath) => {
@@ -177,11 +183,10 @@ export class TriggerEvent {
     }
 
     addMessage = (msgSegment, segmentData, msgLine, destination) => {
-
         const [segmentIdentifier] = msgLine.trim().split(this.delimiters.fieldDelimiter);
-        let segmentType = this.constructor.Structure.segments[segmentIdentifier];
+        let segmentType = this.constructor.Structure.segments[segmentIdentifier] || this.customSegmentMap[segmentIdentifier];
+
         if (segmentType) {
-    
           let segmentId = msgSegment + (segmentData.sequence ? "_" + segmentData.sequence : "");
           if (!destination[segmentId]) {
             destination[segmentId] = {
