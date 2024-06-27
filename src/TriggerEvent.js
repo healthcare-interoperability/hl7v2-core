@@ -13,7 +13,15 @@ export class TriggerEvent {
         if (message) {
             this.message = message.replace(/^\s*[\r\n]+|\s*$/g, '').trim();
             // Split the message into raw segments based on newline characters
-            this.rawSegments = this.message.split(/\r?\n/);
+            this.rawSegments = [];
+            if (message.indexOf('\r\n') !== -1) {
+              this.rawSegments = message.split('\r\n');
+            } else {
+              this.rawSegments = message.split('\r');
+              if (this.rawSegments.length < 2) {
+                this.rawSegments = message.split('\n');
+              }
+            }
 
             // Initialize an object to hold parsed segments
             this.segments = {};
@@ -23,6 +31,8 @@ export class TriggerEvent {
             if (version) {
                 this.version = version;
             }
+
+            this.zSegments = [];
 
             // // Check if the first segment is the MSH segment
             if (this.rawSegments[0]?.startsWith('MSH')) {
@@ -54,7 +64,7 @@ export class TriggerEvent {
                     if (this.TriggerEvent === this.constructor.TriggerEvent) {
                         this.messageStructure = this.getStructureByVersion(this.version);
                         this.nextSequenceList = this.messageStructure.sequences.map(segmentElem => segmentElem.sequence ? this.getExpectedSequenceList(segmentElem.sequence) : [1]);
-                        this.segments = this.convertHL7messageToJSON(this.message);
+                        this.segments = this.convertHL7messageToJSON();
                         if (this.errorList.length === 0) {
                             this.valid = true;
                         }
@@ -130,11 +140,10 @@ export class TriggerEvent {
 
 
 
-    convertHL7messageToJSON = (hlMsg) => {
+    convertHL7messageToJSON = () => {
         let processedJSON = {}
         // Remove blank lines from the beginning
-        let message = hlMsg.replace(/^\s*[\r\n]+|\s*$/g, '');
-        let segmentArray = message.split(/\r?\n/);
+        let segmentArray = this.rawSegments;
         // console.log(JSON.stringify(this.messageStructure, 0, 4));
         // console.log(this.nextSequenceList);
         let expectedSequence = this.nextSequenceList[0]; // Initially only expect Header
@@ -168,26 +177,35 @@ export class TriggerEvent {
     }
 
     addMessage = (msgSegment, segmentData, msgLine, destination) => {
-        let segmentId = msgSegment + (segmentData.sequence ? "_" + segmentData.sequence : "");
-        if (!destination[segmentId]) {
-            destination[segmentId] = {
-                isGroup: false,
-                segment: msgSegment,
-                sequence: segmentData.sequence,
-                restrictions: segmentData.restrictions,
-                messageList: []
-            };
-        }
+
         const [segmentIdentifier] = msgLine.trim().split(this.delimiters.fieldDelimiter);
         let segmentType = this.constructor.Structure.segments[segmentIdentifier];
         if (segmentType) {
-            let segmentInstance = new segmentType(msgLine.trim(), { ...this.delimiters, version: this.version });
-            destination[segmentId].messageList.push(segmentInstance);
+    
+          let segmentId = msgSegment + (segmentData.sequence ? "_" + segmentData.sequence : "");
+          if (!destination[segmentId]) {
+            destination[segmentId] = {
+              isGroup: false,
+              segment: msgSegment,
+              sequence: segmentData.sequence,
+              restrictions: segmentData.restrictions,
+              messageList: []
+            };
+          }
+    
+          let segmentInstance = new segmentType(msgLine.trim(), {
+            ...this.delimiters,
+            version: this.version
+          });
+          destination[segmentId].messageList.push(segmentInstance);
         } else {
+          if(segmentIdentifier.startsWith('Z')){
+            this.zSegments.push(msgLine);
+          } else {
             throw new Error(`Segment Type ${segmentType} not found in Segment List`);
+          }
         }
-
-    }
+      };
 
     addData = (processedJSON, msgSegment, segmentData, msgLine, lastProcessedSequence) => {
         if (!segmentData.isGroup) {
