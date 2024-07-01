@@ -1,6 +1,6 @@
 {
   "name": "@healthcare-interoperability/hl7v2-core",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Core module for HL7v2 message generation and parsing library",
   "main": "dist/index.js",
   "scripts": {
