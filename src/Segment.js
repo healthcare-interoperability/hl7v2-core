@@ -1,6 +1,4 @@
-import { ComplexDataType } from "./ComplexDataType.js";
 import { ComplexType } from "./ComplexType.js";
-import { PrimitiveDataType } from "./PrimitiveDataType.js";
 
 export class Segment extends ComplexType {
 
