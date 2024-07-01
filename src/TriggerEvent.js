@@ -32,7 +32,7 @@ export class TriggerEvent {
                 this.version = version;
             }
 
-            this.zSegments = [];
+            this.zSegments = {};
             this.customSegmentMap = {};
 
             // // Check if the first segment is the MSH segment
@@ -205,7 +205,8 @@ export class TriggerEvent {
           destination[segmentId].messageList.push(segmentInstance);
         } else {
           if(segmentIdentifier.startsWith('Z')){
-            this.zSegments.push(msgLine);
+            this.zSegments[segmentIdentifier] = this.zSegments[segmentIdentifier] || [];
+            this.zSegments[segmentIdentifier].push(msgLine);
           } else {
             throw new Error(`Segment Type ${segmentType} not found in Segment List`);
           }
